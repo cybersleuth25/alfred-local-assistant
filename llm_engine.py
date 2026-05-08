@@ -144,11 +144,16 @@ def _detect_tool_shortcut(prompt: str):
 
 # --- Sensors ---
 def _get_time_of_day() -> str:
+    """Returns the time of day as a string based on the current hour."""
     hour = datetime.now().hour
-    if 5 <= hour < 12: return "morning"
-    elif 12 <= hour < 17: return "afternoon"
-    elif 17 <= hour < 21: return "evening"
-    else: return "night"
+    if 5 <= hour < 12:
+        return "morning"
+    elif 12 <= hour < 17:
+        return "afternoon"
+    elif 17 <= hour < 21:
+        return "evening"
+    else:
+        return "night"
 
 # --- System Prompt & Multi-Agent Defs ---
 AGENT_PROFILES = {
