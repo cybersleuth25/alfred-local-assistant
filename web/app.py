@@ -158,8 +158,10 @@ async def api_osint():
     """Returns news headlines and earthquake data."""
     from tools.osint_tools import get_news, get_earthquakes
     try:
-        news_raw = get_news("world")
-        quake_raw = get_earthquakes()
+        news_raw, quake_raw = await asyncio.gather(
+            asyncio.to_thread(get_news, "world"),
+            asyncio.to_thread(get_earthquakes)
+        )
         
         # Parse news into structured items
         news_items = []
@@ -238,7 +240,7 @@ async def api_weather():
     """Returns real weather data for the user's city from wttr.in."""
     try:
         url = f"https://wttr.in/{USER_CITY}?format=j1"
-        resp = requests.get(url, timeout=8, headers={"User-Agent": "curl"})
+        resp = await asyncio.to_thread(requests.get, url, timeout=8, headers={"User-Agent": "curl"})
         resp.raise_for_status()
         data = resp.json()
 
@@ -279,28 +281,34 @@ async def api_weather():
 @app.get('/api/tracker')
 async def api_tracker():
     """Returns ISS position and crypto prices."""
-    iss = {"lat": 0, "lng": 0}
-    crypto = {}
-    
-    try:
-        r = requests.get("http://api.open-notify.org/iss-now.json", timeout=5)
-        if r.status_code == 200:
-            pos = r.json().get("iss_position", {})
-            iss = {"lat": float(pos.get("latitude", 0)), "lng": float(pos.get("longitude", 0))}
-    except:
-        pass
-    
-    try:
-        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd&include_24hr_change=true", timeout=5)
-        if r.status_code == 200:
-            data = r.json()
-            crypto = {
-                "BTC": {"price": data.get("bitcoin", {}).get("usd", 0), "change": round(data.get("bitcoin", {}).get("usd_24h_change", 0), 2)},
-                "ETH": {"price": data.get("ethereum", {}).get("usd", 0), "change": round(data.get("ethereum", {}).get("usd_24h_change", 0), 2)},
-                "SOL": {"price": data.get("solana", {}).get("usd", 0), "change": round(data.get("solana", {}).get("usd_24h_change", 0), 2)}
-            }
-    except:
-        pass
+    def get_iss():
+        try:
+            r = requests.get("http://api.open-notify.org/iss-now.json", timeout=5)
+            if r.status_code == 200:
+                pos = r.json().get("iss_position", {})
+                return {"lat": float(pos.get("latitude", 0)), "lng": float(pos.get("longitude", 0))}
+        except:
+            pass
+        return {"lat": 0, "lng": 0}
+
+    def get_crypto():
+        try:
+            r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd&include_24hr_change=true", timeout=5)
+            if r.status_code == 200:
+                data = r.json()
+                return {
+                    "BTC": {"price": data.get("bitcoin", {}).get("usd", 0), "change": round(data.get("bitcoin", {}).get("usd_24h_change", 0), 2)},
+                    "ETH": {"price": data.get("ethereum", {}).get("usd", 0), "change": round(data.get("ethereum", {}).get("usd_24h_change", 0), 2)},
+                    "SOL": {"price": data.get("solana", {}).get("usd", 0), "change": round(data.get("solana", {}).get("usd_24h_change", 0), 2)}
+                }
+        except:
+            pass
+        return {}
+
+    iss, crypto = await asyncio.gather(
+        asyncio.to_thread(get_iss),
+        asyncio.to_thread(get_crypto)
+    )
     
     return JSONResponse({"iss": iss, "crypto": crypto, "updated": datetime.now().strftime("%H:%M:%S")})
 
@@ -328,7 +336,7 @@ async def api_spotify_now_playing():
     """Returns what is currently playing on Spotify."""
     try:
         from tools.core_tools import get_now_playing
-        result = get_now_playing()
+        result = await asyncio.to_thread(get_now_playing)
         if "not playing" in result.lower() or "error" in result.lower() or "no active" in result.lower():
             return JSONResponse({"playing": False})
         # Parse the result string
