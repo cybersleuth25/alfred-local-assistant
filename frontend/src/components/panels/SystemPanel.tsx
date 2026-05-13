@@ -15,17 +15,17 @@ interface SystemData {
 }
 
 function Bar({ label, pct }: { label: string; pct: number }) {
-  const barClass = pct > 85 ? 'bar-gradient-danger' : pct > 60 ? 'bar-gradient-warn' : 'bar-gradient-normal';
+  const barClass = pct > 85 ? 'bg-[#ef4444]' : pct > 60 ? 'bg-[#f59e0b]' : 'bg-[#14b8a6]';
   return (
     <div className="flex items-center gap-3 mb-3">
       <span className="label w-8 shrink-0">{label}</span>
-      <div className="flex-1 h-[5px] bg-white/[0.04] rounded-full overflow-hidden">
+      <div className="flex-1 h-[5px] bg-[#27272a] rounded-full overflow-hidden">
         <div 
           className={`h-full rounded-full transition-all duration-[1500ms] ease-out ${barClass}`}
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </div>
-      <span className="text-[10px] font-mono text-white/40 w-9 text-right tabular-nums">{pct}%</span>
+      <span className="text-[10px] font-mono text-[#a1a1aa] w-9 text-right tabular-nums">{pct}%</span>
     </div>
   );
 }
@@ -41,7 +41,7 @@ function BatteryIcon({ percent, plugged }: { percent: number; plugged: boolean }
           style={{ width: `${percent}%`, background: color }}
         />
       </div>
-      <div className="w-[2px] h-[4px] bg-white/20 rounded-r-[1px]" />
+      <div className="w-[2px] h-[4px] bg-[#52525b] rounded-r-[1px]" />
       {plugged && (
         <svg width="6" height="8" viewBox="0 0 10 16" className="absolute left-[5px]" fill={color} opacity="0.8">
           <polygon points="6,0 2,7 5,7 4,16 8,9 5,9" />
@@ -70,25 +70,23 @@ export default function SystemPanel() {
   if (!data) {
     return (
       <div className="glass-panel accent-amber h-full flex items-center justify-center">
-        <div className="scanline-effect" />
-        <div className="text-[11px] text-white/15 animate-pulse font-light tracking-wider">Connecting...</div>
+        <div className="text-[11px] text-[#a1a1aa] animate-pulse font-light tracking-wider">Connecting...</div>
       </div>
     );
   }
 
   return (
     <div className="glass-panel accent-amber h-full flex flex-col overflow-hidden">
-      <div className="scanline-effect" />
       
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2.5">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-emerald-400/60">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[#14b8a6]">
             <rect x="4" y="4" width="16" height="16" rx="2"/>
             <rect x="9" y="9" width="6" height="6" rx="1" opacity="0.5"/>
           </svg>
-          <span className="text-[11px] tracking-[0.15em] text-white/50 font-light">System</span>
+          <span className="text-[11px] tracking-[0.15em] text-[#a1a1aa] font-light">System</span>
         </div>
-        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/60 status-breathe text-emerald-400"></div>
+        <div className="w-1.5 h-1.5 rounded-full bg-[#14b8a6] status-breathe text-[#14b8a6]"></div>
       </div>
 
       <Bar label="CPU" pct={data.cpu} />
@@ -99,16 +97,16 @@ export default function SystemPanel() {
       {data.battery && (
         <div className="flex items-center gap-3 mb-3 mt-1">
           <span className="label w-8 shrink-0">Batt</span>
-          <div className="flex-1 h-[5px] bg-white/[0.04] rounded-full overflow-hidden">
+          <div className="flex-1 h-[5px] bg-[#27272a] rounded-full overflow-hidden">
             <div 
               className={`h-full rounded-full transition-all duration-[1500ms] ease-out ${
-                data.battery.percent <= 20 ? 'bar-gradient-danger' : data.battery.plugged ? 'bar-gradient-normal' : 'bar-gradient-normal'
+                data.battery.percent <= 20 ? 'bg-[#ef4444]' : data.battery.plugged ? 'bg-[#14b8a6]' : 'bg-[#14b8a6]'
               }`}
               style={{ width: `${data.battery.percent}%` }}
             />
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-mono text-white/40 tabular-nums">{data.battery.percent}%</span>
+            <span className="text-[10px] font-mono text-[#a1a1aa] tabular-nums">{data.battery.percent}%</span>
             <BatteryIcon percent={data.battery.percent} plugged={data.battery.plugged} />
           </div>
         </div>
@@ -125,7 +123,7 @@ export default function SystemPanel() {
         </div>
       </div>
 
-      <div className="h-px bg-white/[0.04] mb-3"></div>
+      <div className="h-px bg-[#27272a] mb-3"></div>
 
       <div className="flex-1 overflow-hidden">
         <div className="section-header">
@@ -133,8 +131,8 @@ export default function SystemPanel() {
         </div>
         {data.top_procs.map((p, i) => (
           <div key={i} className={`flex items-center justify-between text-[10px] py-1.5 px-2 row-alt`}>
-            <span className="text-white/35 truncate flex-1 mr-3 font-light">{p.name}</span>
-            <span className="font-mono text-white/20 text-[9px] tabular-nums">{p.mem}%</span>
+            <span className="text-[#f4f4f5] truncate flex-1 mr-3 font-light">{p.name}</span>
+            <span className="font-mono text-[#71717a] text-[9px] tabular-nums">{p.mem}%</span>
           </div>
         ))}
       </div>
