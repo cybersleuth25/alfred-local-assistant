@@ -36,7 +36,7 @@ export default function CivicPanel() {
     if (grade.startsWith('C')) return 'text-amber-400';
     if (grade.startsWith('D')) return 'text-orange-400';
     if (grade.startsWith('F')) return 'text-red-400';
-    return 'text-white/50';
+    return 'text-[#a1a1aa]';
   };
 
   const getScoreColor = (score: number) => {
@@ -47,7 +47,6 @@ export default function CivicPanel() {
 
   return (
     <div className="glass-panel accent-emerald h-full flex flex-col overflow-hidden relative group">
-      <div className="scanline-effect opacity-50" />
       
       {/* Header */}
       <div className="flex items-center justify-between mb-4 relative z-10">
@@ -57,9 +56,9 @@ export default function CivicPanel() {
             <path d="M2 17l10 5 10-5" />
             <path d="M2 12l10 5 10-5" />
           </svg>
-          <span className="text-[11px] tracking-[0.15em] text-white/50 font-light">CIVIC HEALTH</span>
+          <span className="text-[11px] tracking-[0.15em] text-[#a1a1aa] font-light">CIVIC HEALTH</span>
         </div>
-        <span className="text-[9px] text-white/15 font-mono tabular-nums">{data?.updated || '--:--'}</span>
+        <span className="text-[9px] text-[#71717a] font-mono tabular-nums">{data?.updated || '--:--'}</span>
       </div>
 
       {loading ? (
@@ -86,13 +85,13 @@ export default function CivicPanel() {
               <span className={`text-4xl font-light tracking-tight ${getGradeColor(data?.grade || 'N/A')}`}>
                 {data?.grade || '-'}
               </span>
-              <span className="text-[10px] text-white/30 font-mono mt-1">SCORE: {data?.score || 0}</span>
+              <span className="text-[10px] text-[#71717a] font-mono mt-1">SCORE: {data?.score || 0}</span>
             </div>
           </div>
 
           {/* AI Summary */}
           <div className="px-4 text-center">
-            <p className="text-[11px] text-white/60 font-light leading-relaxed">
+            <p className="text-[11px] text-[#f4f4f5] font-light leading-relaxed">
               {data?.summary || 'No civic data available at the moment.'}
             </p>
           </div>
