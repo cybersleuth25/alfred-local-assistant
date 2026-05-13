@@ -6,23 +6,17 @@ import datetime
 import memory_engine
 
 @pytest.fixture
-def temp_db(tmp_path):
+def temp_db(tmp_path, monkeypatch):
     # Setup temporary database
     db_file = tmp_path / "test_memory.db"
 
-    # Save original
-    original_db_path = memory_engine.DB_PATH
-
-    # Patch DB path
-    memory_engine.DB_PATH = str(db_file)
+    # Patch DB path and let pytest restore it automatically
+    monkeypatch.setattr(memory_engine, "DB_PATH", str(db_file))
 
     # Initialize schema
     memory_engine.init_db()
 
     yield str(db_file)
-
-    # Teardown
-    memory_engine.DB_PATH = original_db_path
 
 def test_add_task_without_deadline(temp_db):
     memory_engine.add_task("Buy groceries")
