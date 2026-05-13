@@ -29,7 +29,7 @@ const ShaderBackground = ({ state }: ShaderBackgroundProps) => {
 
     void main() {
       vec2 uv = gl_FragCoord.xy / iResolution.xy;
-      
+
       // Center coordinates
       vec2 p = uv * 2.0 - 1.0;
       p.x *= iResolution.x / iResolution.y;
