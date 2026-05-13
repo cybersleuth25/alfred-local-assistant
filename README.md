@@ -46,9 +46,10 @@ venv\Scripts\activate
 ```
 
 **3. Install Dependencies**
-*(Note: A `requirements.txt` will need to be generated if not present, primarily requiring `ollama`, `opencv-python`, `psutil`, `python-telegram-bot`, `python-dotenv`, `vosk`, `pyaudio`, etc.)*
+*(Note: A `requirements.txt` will need to be generated if not present, primarily requiring `ollama`, `opencv-python`, `psutil`, `python-telegram-bot`, `python-dotenv`, `vosk`, `pyaudio`, etc. For running tests, also install `pytest`.)*
 ```bash
 pip install -r requirements.txt
+pip install pytest
 ```
 
 **4. Pull Required Local Models**
