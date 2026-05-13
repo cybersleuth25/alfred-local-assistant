@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface ShaderBackgroundProps {
   state: "idle" | "listening" | "processing" | "speaking";
@@ -6,22 +6,11 @@ interface ShaderBackgroundProps {
 
 const ShaderBackground = ({ state }: ShaderBackgroundProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stateRef = useRef(state);
   
-  // Add an artificial delay to the speaking state to sync with Edge TTS audio download latency
-  const [delayedState, setDelayedState] = useState(state);
   useEffect(() => {
-    if (state === 'speaking') {
-      const timer = setTimeout(() => setDelayedState('speaking'), 800); // 800ms delay for audio sync
-      return () => clearTimeout(timer);
-    } else {
-      setDelayedState(state);
-    }
+    stateRef.current = state;
   }, [state]);
-
-  const stateRef = useRef(delayedState);
-  useEffect(() => {
-    stateRef.current = delayedState;
-  }, [delayedState]);
 
   const vsSource = `
     attribute vec4 aVertexPosition;
@@ -30,169 +19,88 @@ const ShaderBackground = ({ state }: ShaderBackgroundProps) => {
     }
   `;
 
-  // Fragment shader source code
+  // Minimal clean grid shader
   const fsSource = `
     precision highp float;
     uniform vec2 iResolution;
     uniform float iTime;
-    uniform float uSpread;
-    uniform float uAmplitude;
-
-    const float overallSpeed = 0.2;
-    const float gridSmoothWidth = 0.015;
-    const float axisWidth = 0.05;
-    const float majorLineWidth = 0.025;
-    const float minorLineWidth = 0.0125;
-    const float majorLineFrequency = 5.0;
-    const float minorLineFrequency = 1.0;
-    const vec4 gridColor = vec4(0.5);
-    const float scale = 5.0;
-    const vec4 lineColor = vec4(0.4, 0.2, 0.8, 1.0);
-    const float minLineWidth = 0.01;
-    const float maxLineWidth = 0.2;
-    const float lineSpeed = 1.0 * overallSpeed;
-    const float lineAmplitude = 1.0;
-    const float lineFrequency = 0.2;
-    const float warpSpeed = 0.2 * overallSpeed;
-    const float warpFrequency = 0.5;
-    const float warpAmplitude = 1.0;
-    const float offsetFrequency = 0.5;
-    const float offsetSpeed = 1.33 * overallSpeed;
-    const float minOffsetSpread = 0.6;
-    const float maxOffsetSpread = 2.0;
-    const int linesPerGroup = 16;
-
-    #define drawCircle(pos, radius, coord) smoothstep(radius + gridSmoothWidth, radius, length(coord - (pos)))
-    #define drawSmoothLine(pos, halfWidth, t) smoothstep(halfWidth, 0.0, abs(pos - (t)))
-    #define drawCrispLine(pos, halfWidth, t) smoothstep(halfWidth + gridSmoothWidth, halfWidth, abs(pos - (t)))
-    #define drawPeriodicLine(freq, width, t) drawCrispLine(freq / 2.0, width, abs(mod(t, freq) - (freq) / 2.0))
-
-    float drawGridLines(float axis) {
-      return drawCrispLine(0.0, axisWidth, axis)
-            + drawPeriodicLine(majorLineFrequency, majorLineWidth, axis)
-            + drawPeriodicLine(minorLineFrequency, minorLineWidth, axis);
-    }
-
-    float drawGrid(vec2 space) {
-      return min(1.0, drawGridLines(space.x) + drawGridLines(space.y));
-    }
-
-    float random(float t) {
-      return (cos(t) + cos(t * 1.3 + 1.3) + cos(t * 1.4 + 1.4)) / 3.0;
-    }
-
-    float getPlasmaY(float x, float horizontalFade, float offset) {
-      return random(x * lineFrequency + iTime * lineSpeed) * horizontalFade * lineAmplitude * uAmplitude + offset;
-    }
+    uniform vec3 uColor;
+    uniform float uIntensity;
 
     void main() {
-      vec2 fragCoord = gl_FragCoord.xy;
-      vec4 fragColor;
-      vec2 uv = fragCoord.xy / iResolution.xy;
-      vec2 space = (fragCoord - iResolution.xy / 2.0) / iResolution.x * 2.0 * scale;
+      vec2 uv = gl_FragCoord.xy / iResolution.xy;
+      
+      // Center coordinates
+      vec2 p = uv * 2.0 - 1.0;
+      p.x *= iResolution.x / iResolution.y;
 
-      float horizontalFade = 1.0 - (cos(uv.x * 6.28) * 0.5 + 0.5);
-      float verticalFade = 1.0 - (cos(uv.y * 6.28) * 0.5 + 0.5);
+      // Subtle vignette
+      float v = 1.0 - length(p) * 0.5;
+      v = smoothstep(0.0, 1.0, v);
 
-      space.y += random(space.x * warpFrequency + iTime * warpSpeed) * warpAmplitude * (0.5 + horizontalFade);
-      space.x += random(space.y * warpFrequency + iTime * warpSpeed + 2.0) * warpAmplitude * horizontalFade;
+      // Dynamic grid
+      vec2 grid = fract(uv * 40.0 + vec2(iTime * 0.1, iTime * 0.05));
+      float lines = smoothstep(0.95, 1.0, grid.x) + smoothstep(0.95, 1.0, grid.y);
+      lines = clamp(lines, 0.0, 1.0);
 
-      vec4 lines = vec4(0.0);
-      vec4 bgColor1 = vec4(0.1, 0.1, 0.3, 1.0);
-      vec4 bgColor2 = vec4(0.3, 0.1, 0.5, 1.0);
+      // Soft radial glow based on state
+      float glow = smoothstep(0.8, 0.0, length(p)) * uIntensity;
 
-      for(int l = 0; l < linesPerGroup; l++) {
-        float normalizedLineIndex = float(l) / float(linesPerGroup);
-        float offsetTime = iTime * offsetSpeed;
-        float offsetPosition = float(l) + space.x * offsetFrequency;
-        float rand = random(offsetPosition + offsetTime) * 0.5 + 0.5;
-        float halfWidth = mix(minLineWidth, maxLineWidth, rand * horizontalFade) / 2.0;
-        float offset = random(offsetPosition + offsetTime * (1.0 + normalizedLineIndex)) * mix(minOffsetSpread, maxOffsetSpread, horizontalFade) * uSpread;
-        float linePosition = getPlasmaY(space.x, horizontalFade, offset);
-        float line = drawSmoothLine(linePosition, halfWidth, space.y) / 2.0 + drawCrispLine(linePosition, halfWidth * 0.15, space.y);
+      vec3 finalColor = vec3(0.035, 0.035, 0.043); // bg-base #09090b
 
-        float circleX = mod(float(l) + iTime * lineSpeed, 25.0) - 12.0;
-        vec2 circlePosition = vec2(circleX, getPlasmaY(circleX, horizontalFade, offset));
-        float circle = drawCircle(circlePosition, 0.01, space) * 4.0;
+      // Add grid lines
+      finalColor = mix(finalColor, vec3(0.1, 0.1, 0.1), lines * 0.5 * v);
 
-        line = line + circle;
-        lines += line * lineColor * rand;
-      }
+      // Add state color glow
+      finalColor += uColor * glow * 0.15;
 
-      fragColor = mix(bgColor1, bgColor2, uv.x);
-      fragColor *= verticalFade;
-      fragColor.a = 1.0;
-      fragColor += lines;
-
-      gl_FragColor = fragColor;
+      gl_FragColor = vec4(finalColor, 1.0);
     }
   `;
 
-  // Helper function to compile shader
-  const loadShader = (gl: WebGLRenderingContext, type: number, source: string) => {
-    const shader = gl.createShader(type);
-    if (!shader) return null;
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      const infoLog = gl.getShaderInfoLog(shader);
-      console.error('Shader compile error: ', infoLog);
-      
-      // Inject error into DOM so we can read it visually
-      const errDiv = document.createElement('div');
-      errDiv.style.position = 'fixed';
-      errDiv.style.top = '10px';
-      errDiv.style.left = '10px';
-      errDiv.style.color = 'red';
-      errDiv.style.backgroundColor = 'rgba(0,0,0,0.8)';
-      errDiv.style.padding = '20px';
-      errDiv.style.zIndex = '9999';
-      errDiv.style.fontFamily = 'monospace';
-      errDiv.style.whiteSpace = 'pre-wrap';
-      errDiv.innerText = 'GLSL Error:\\n' + infoLog;
-      document.body.appendChild(errDiv);
-
-      gl.deleteShader(shader);
-      return null;
-    }
-
-    return shader;
-  };
-
-  // Initialize shader program
-  const initShaderProgram = (gl: WebGLRenderingContext, vsSource: string, fsSource: string) => {
-    const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
-    const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
-
-    if (!vertexShader || !fragmentShader) return null;
-
-    const shaderProgram = gl.createProgram();
-    if (!shaderProgram) return null;
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
-    gl.linkProgram(shaderProgram);
-
-    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-      console.error('Shader program link error: ', gl.getProgramInfoLog(shaderProgram));
-      return null;
-    }
-
-    return shaderProgram;
-  };
-
   useEffect(() => {
+    const loadShader = (gl: WebGLRenderingContext, type: number, source: string) => {
+      const shader = gl.createShader(type);
+      if (!shader) return null;
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error('Shader compile error: ', gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+      return shader;
+    };
+
+    const initShaderProgram = (gl: WebGLRenderingContext, vsSource: string, fsSource: string) => {
+      const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+      const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+      if (!vertexShader || !fragmentShader) return null;
+
+      const shaderProgram = gl.createProgram();
+      if (!shaderProgram) return null;
+      gl.attachShader(shaderProgram, vertexShader);
+      gl.attachShader(shaderProgram, fragmentShader);
+      gl.linkProgram(shaderProgram);
+
+      if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+        console.error('Shader program link error: ', gl.getProgramInfoLog(shaderProgram));
+        return null;
+      }
+      return shaderProgram;
+    };
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const gl = canvas.getContext('webgl');
-    if (!gl) {
-      console.warn('WebGL not supported.');
-      return;
-    }
+    if (!gl) return;
 
     const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
     if (!shaderProgram) return;
+
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     const positions = [
@@ -211,8 +119,8 @@ const ShaderBackground = ({ state }: ShaderBackgroundProps) => {
       uniformLocations: {
         resolution: gl.getUniformLocation(shaderProgram, 'iResolution'),
         time: gl.getUniformLocation(shaderProgram, 'iTime'),
-        spread: gl.getUniformLocation(shaderProgram, 'uSpread'),
-        amplitude: gl.getUniformLocation(shaderProgram, 'uAmplitude'),
+        color: gl.getUniformLocation(shaderProgram, 'uColor'),
+        intensity: gl.getUniformLocation(shaderProgram, 'uIntensity'),
       },
     };
 
@@ -225,21 +133,26 @@ const ShaderBackground = ({ state }: ShaderBackgroundProps) => {
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    const PRESETS = {
-      idle:       { speed: 1.0, spread: 1.0 },
-      listening:  { speed: 1.2, spread: 1.2 }, // slowed from 1.5
-      processing: { speed: 2.0, spread: 0.8 }, // slowed from 3.5
-      speaking:   { speed: 1.1, spread: 0.0 }, // slowed from 2.0, spread 0.0 merges all lines
+    // State Colors (RGB 0-1)
+    // listening: cyan #14b8a6 -> 0.08, 0.72, 0.65
+    // processing: amber #f59e0b -> 0.96, 0.62, 0.04
+    // speaking: purple #8b5cf6 -> 0.55, 0.36, 0.96
+    // idle: gray #71717a -> 0.44, 0.44, 0.48
+    const PRESETS: Record<string, { r: number, g: number, b: number, intensity: number }> = {
+      idle:       { r: 0.44, g: 0.44, b: 0.48, intensity: 0.1 },
+      listening:  { r: 0.08, g: 0.72, b: 0.65, intensity: 0.8 },
+      processing: { r: 0.96, g: 0.62, b: 0.04, intensity: 0.6 },
+      speaking:   { r: 0.55, g: 0.36, b: 0.96, intensity: 0.9 },
     };
 
-    // Smooth transition state
     const currentUniforms = {
-      speed: PRESETS.idle.speed,
-      spread: PRESETS.idle.spread,
-      amplitude: 1.0
+      r: PRESETS.idle.r,
+      g: PRESETS.idle.g,
+      b: PRESETS.idle.b,
+      intensity: PRESETS.idle.intensity
     };
 
-    let startTime = Date.now();
+    const startTime = Date.now();
     let animationFrameId: number;
     let lastTime = Date.now();
     
@@ -249,41 +162,31 @@ const ShaderBackground = ({ state }: ShaderBackgroundProps) => {
       lastTime = now;
       const currentTime = (now - startTime) / 1000;
 
-      // Lerp uniforms towards target state
       const target = PRESETS[stateRef.current] || PRESETS.idle;
-      const lerpSpeed = Math.min(3.0 * dt, 1.0);
+      const lerpSpeed = Math.min(4.0 * dt, 1.0);
       
-      currentUniforms.speed += (target.speed - currentUniforms.speed) * lerpSpeed;
-      currentUniforms.spread += (target.spread - currentUniforms.spread) * lerpSpeed;
-
-      // Voice pulse logic & Pseudo-Random Voice Envelope
-      let pulseMultiplier = 1.0;
-      let targetAmplitude = 1.0;
+      currentUniforms.r += (target.r - currentUniforms.r) * lerpSpeed;
+      currentUniforms.g += (target.g - currentUniforms.g) * lerpSpeed;
+      currentUniforms.b += (target.b - currentUniforms.b) * lerpSpeed;
       
+      // Speaking pulse
+      let targetIntensity = target.intensity;
       if (stateRef.current === "speaking") {
-         pulseMultiplier = 1.0 + Math.abs(Math.sin(currentTime * 5.0)) * 0.2; // slowed and softened
-         
-         // Simulated lip-sync volume (slower, smoother overlapping sines)
-         const v1 = Math.sin(currentTime * 4.0);
-         const v2 = Math.sin(currentTime * 7.5);
-         const v3 = Math.sin(currentTime * 2.5);
-         // Clamp below 0 to create natural "pauses"
-         let vol = (v1 * 0.5 + v2 * 0.3 + v3 * 0.2);
-         targetAmplitude = 1.0 + Math.max(0, vol * 2.5); // Reduced max amplitude spike
+         const pulse = Math.sin(currentTime * 8.0) * 0.5 + 0.5;
+         targetIntensity = 0.5 + pulse * 0.5;
       }
       
-      // Lerp amplitude a bit slower for smoother movement
-      currentUniforms.amplitude += (targetAmplitude - currentUniforms.amplitude) * Math.min(6.0 * dt, 1.0);
+      currentUniforms.intensity += (targetIntensity - currentUniforms.intensity) * lerpSpeed;
 
-      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      gl.clearColor(0.035, 0.035, 0.043, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
       gl.useProgram(programInfo.program);
 
       gl.uniform2f(programInfo.uniformLocations.resolution, canvas.width, canvas.height);
-      gl.uniform1f(programInfo.uniformLocations.time, currentTime * currentUniforms.speed * pulseMultiplier);
-      gl.uniform1f(programInfo.uniformLocations.spread, currentUniforms.spread);
-      gl.uniform1f(programInfo.uniformLocations.amplitude, currentUniforms.amplitude);
+      gl.uniform1f(programInfo.uniformLocations.time, currentTime);
+      gl.uniform3f(programInfo.uniformLocations.color, currentUniforms.r, currentUniforms.g, currentUniforms.b);
+      gl.uniform1f(programInfo.uniformLocations.intensity, currentUniforms.intensity);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
       gl.vertexAttribPointer(
@@ -306,10 +209,10 @@ const ShaderBackground = ({ state }: ShaderBackgroundProps) => {
       window.removeEventListener('resize', resizeCanvas);
       cancelAnimationFrame(animationFrameId);
     };
-  }, []); // Empty dependency array ensures WebGL initializes only once!
+  }, [vsSource, fsSource]);
 
   return (
-    <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full" />
+    <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full opacity-60" />
   );
 };
 

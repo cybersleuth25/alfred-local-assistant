@@ -113,61 +113,53 @@ function App() {
 
   const moodLabel = mood === 'engaged' ? 'ENGAGED' : mood === 'dormant' ? 'DORMANT' : mood === 'idle' ? 'IDLE' : 'STANDBY';
 
-  // State-reactive ambient color
-  const ambientColor = orbState === 'listening' ? 'rgba(0, 232, 198, 0.05)' 
-    : orbState === 'processing' ? 'rgba(255, 170, 0, 0.05)' 
-    : orbState === 'speaking' ? 'rgba(180, 190, 255, 0.04)' 
-    : 'rgba(80, 90, 140, 0.015)';
-
   // State accent color for bottom bar
-  const stateColor = orbState === 'listening' ? '#00e8c6' 
-    : orbState === 'processing' ? '#ffaa00' 
-    : orbState === 'speaking' ? '#b4beff' 
-    : 'rgba(255,255,255,0.3)';
+  const stateColor = orbState === 'listening' ? '#14b8a6'
+    : orbState === 'processing' ? '#f59e0b'
+    : orbState === 'speaking' ? '#8b5cf6'
+    : '#71717a';
 
   return (
     <div className="w-screen h-screen bg-cinematic flex flex-col items-center justify-center relative overflow-hidden font-sans text-white">
-      
-      {/* State-reactive ambient overlay */}
-      <div className="absolute inset-0 z-0 transition-all duration-[2000ms] pointer-events-none" style={{ background: `radial-gradient(circle at 50% 45%, ${ambientColor} 0%, transparent 70%)` }} />
 
       <CommandCenter active={commandCenter} />
 
       {/* ── Top Bar ── */}
-      <div className="absolute top-0 left-0 right-0 z-40 pointer-events-auto px-8 py-5 flex items-center justify-between">
+      <div className="absolute top-0 left-0 right-0 z-40 pointer-events-auto px-8 py-5 flex items-center justify-between border-b border-[#27272a] bg-[#09090b]/80 backdrop-blur-sm">
         
         {/* Left: Brand + Link Status + Mood */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5">
-            <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-500 ${
-              connected ? 'bg-emerald-400/80 status-breathe text-emerald-400' : 'bg-red-400/60 text-red-400'
+            <div className={`w-2 h-2 rounded-full transition-colors duration-500 ${
+              connected ? 'bg-[#14b8a6] status-breathe' : 'bg-red-500'
             }`} />
-            <span className="text-[10px] tracking-[0.3em] text-white/25 font-light uppercase">Alfred</span>
+            <span className="text-[11px] tracking-[0.1em] text-[#f4f4f5] font-semibold uppercase">Alfred</span>
           </div>
-          <div className="w-px h-3 bg-white/[0.06]"></div>
-          <span className={`text-[9px] tracking-[0.2em] font-light uppercase transition-colors duration-500 ${
-            connected ? 'text-emerald-400/40' : 'text-red-400/40'
+          <div className="w-px h-4 bg-[#27272a]"></div>
+          <span className={`text-[10px] tracking-[0.1em] font-medium uppercase transition-colors duration-500 ${
+            connected ? 'text-[#14b8a6]' : 'text-red-500'
           }`}>{connected ? 'LINK' : 'OFFLINE'}</span>
-          <div className="w-px h-3 bg-white/[0.06]"></div>
-          <span className="text-[9px] tracking-[0.15em] text-white/15 font-light uppercase">{moodLabel}</span>
+          <div className="w-px h-4 bg-[#27272a]"></div>
+          <span className="text-[10px] tracking-[0.1em] text-[#71717a] font-medium uppercase">{moodLabel}</span>
         </div>
 
         {/* Center: Command Center toggle */}
         <button 
           onClick={() => setCommandCenter(!commandCenter)}
-          className={`px-5 py-2 text-[9px] tracking-[0.2em] font-light rounded-full transition-all duration-500 ${
+          className={`px-6 py-2 text-[10px] tracking-[0.1em] font-medium rounded-md transition-all duration-300 border ${
             commandCenter 
-            ? 'bg-white/[0.08] text-white/80 border border-white/15 shadow-[0_0_20px_rgba(255,255,255,0.03)]' 
-            : 'bg-transparent text-white/30 border border-white/[0.06] hover:text-white/60' 
+            ? 'bg-[#27272a] text-[#f4f4f5] border-[#52525b]'
+            : 'bg-transparent text-[#a1a1aa] border-[#27272a] hover:bg-[#18181b]'
           }`}
         >
-          {commandCenter ? 'CLOSE' : 'COMMAND CENTER'}
+          {commandCenter ? 'CLOSE DASHBOARD' : 'OPEN DASHBOARD'}
         </button>
 
         {/* Right: Clock */}
-        <div className="text-right">
-          <div className="text-[11px] font-mono text-white/30 tracking-wider tabular-nums">{formatTime(currentTime)}</div>
-          <div className="text-[9px] text-white/12 tracking-widest font-light">{formatDate(currentTime)}</div>
+        <div className="text-right flex items-center gap-3">
+          <div className="text-[11px] text-[#71717a] font-medium uppercase">{formatDate(currentTime)}</div>
+          <div className="w-px h-4 bg-[#27272a]"></div>
+          <div className="text-[13px] font-mono text-[#f4f4f5] font-medium tabular-nums">{formatTime(currentTime)}</div>
         </div>
       </div>
 
@@ -199,47 +191,45 @@ function App() {
 
       {/* ── Spotify Now Playing — bottom left ── */}
       {nowPlaying && !commandCenter && (
-        <div className="absolute bottom-[100px] left-8 z-30 flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md animate-fade-in">
+        <div className="absolute bottom-[80px] left-8 z-30 flex items-center gap-4 px-4 py-3 rounded-lg bg-[#18181b] border border-[#27272a] shadow-sm animate-fade-in">
           {/* Equalizer bars */}
-          <div className="flex items-end h-3">
+          <div className="flex items-end h-4 gap-0.5">
             <span className="eq-bar"></span>
             <span className="eq-bar"></span>
             <span className="eq-bar"></span>
             <span className="eq-bar"></span>
           </div>
           <div>
-            <div className="text-[10px] text-white/60 font-light truncate max-w-[180px]">{nowPlaying.song}</div>
-            <div className="text-[8px] text-white/25 truncate max-w-[180px]">{nowPlaying.artist}</div>
+            <div className="text-[12px] text-[#f4f4f5] font-medium truncate max-w-[180px]">{nowPlaying.song}</div>
+            <div className="text-[10px] text-[#a1a1aa] truncate max-w-[180px] mt-0.5">{nowPlaying.artist}</div>
           </div>
-          <span className="text-[8px] tracking-[0.15em] text-emerald-400/40 font-mono uppercase">Live</span>
         </div>
       )}
 
       {/* ── Bottom Bar: Status + Transcript ── */}
-      <div className={`absolute bottom-0 left-0 right-0 z-40 transition-all duration-700 ${commandCenter ? 'opacity-0 translate-y-4' : 'opacity-100'}`}>
-        <div className="px-8 py-4 flex items-end justify-between">
+      <div className={`absolute bottom-0 left-0 right-0 z-40 transition-all duration-700 bg-[#09090b]/80 backdrop-blur-sm border-t border-[#27272a] ${commandCenter ? 'opacity-0 translate-y-full' : 'opacity-100'}`}>
+        <div className="px-8 py-3 flex items-center justify-between">
           
-          {/* Left: State indicator with colored underline */}
-          <div className="text-left">
-            <div className="text-[8px] text-white/15 tracking-[0.3em] mb-1.5 uppercase font-light">Status</div>
-            <div className="relative inline-block">
-              <div className="text-sm font-extralight tracking-[0.2em] capitalize transition-colors duration-500" style={{ color: stateColor }}>
+          {/* Left: State indicator */}
+          <div className="flex items-center gap-4">
+            <div className="text-[10px] text-[#71717a] font-medium uppercase">System Status</div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: stateColor }} />
+              <div className="text-[12px] font-semibold uppercase tracking-wider transition-colors duration-500" style={{ color: stateColor }}>
                 {orbState}
               </div>
-              <div className="absolute bottom-[-3px] left-0 right-0 h-[1px] transition-colors duration-500" style={{ background: `linear-gradient(90deg, ${stateColor}, transparent)` }} />
             </div>
           </div>
 
           {/* Right: Mini transcript log */}
-          <div className="max-w-md w-80 max-h-20 overflow-hidden">
-            <div className="space-y-1">
-              {transcript.slice(-3).map((line) => (
-                <div key={line.id} className="text-[10px] leading-snug animate-fade-in flex gap-2">
-                  <span className={`shrink-0 font-mono tracking-wider w-6 ${
-                    line.author === 'User' ? 'text-cyan-400/40' : line.author === 'Alfred' ? 'text-white/30' : 'text-amber-400/30'
+          <div className="max-w-md w-96 max-h-16 overflow-hidden">
+            <div className="flex flex-col justify-end h-full">
+              {transcript.slice(-2).map((line) => (
+                <div key={line.id} className="text-[11px] leading-relaxed animate-fade-in flex gap-3">
+                  <span className={`shrink-0 font-medium w-8 ${
+                    line.author === 'User' ? 'text-[#14b8a6]' : line.author === 'Alfred' ? 'text-[#f4f4f5]' : 'text-[#f59e0b]'
                   }`}>{line.author === 'User' ? 'YOU' : line.author === 'Alfred' ? 'ALF' : 'SYS'}</span>
-                  <span className="w-px h-3 bg-white/[0.06] shrink-0 mt-0.5"></span>
-                  <span className="text-white/25 truncate">{line.text}</span>
+                  <span className="text-[#a1a1aa] truncate">{line.text}</span>
                 </div>
               ))}
               <div ref={transcriptEndRef} />
